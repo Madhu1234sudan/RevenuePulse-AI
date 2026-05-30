@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+
+.vscode/
+.idea/
+
+.env
+
+data/processed/
+models/
+
+.streamlit/
+
+.ipynb_checkpoints/
