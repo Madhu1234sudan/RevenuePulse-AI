@@ -1,3 +1,22 @@
+
+from src.eda import calculate_kpis
+from src.preprocessing import (
+    convert_dates,
+    count_missing_values,
+    count_duplicate_rows
+)
+import sys
+from pathlib import Path
+
+project_root = Path(__file__).resolve().parent.parent
+sys.path.append(str(project_root))
+from src.insights import (
+    get_top_category,
+    get_top_region,
+    get_top_product,
+    get_category_contribution
+)
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -64,8 +83,8 @@ if uploaded_file is not None:
 
     col1, col2, col3, col4 = st.columns(4)
 
-    missing_values = filtered_df.isnull().sum().sum()
-    duplicate_rows = filtered_df.duplicated().sum()
+    missing_values = count_missing_values(filtered_df)
+    duplicate_rows = count_duplicate_rows(filtered_df)
 
     col1.metric("Rows", filtered_df.shape[0])
     col2.metric("Columns", filtered_df.shape[1])
@@ -91,17 +110,19 @@ if uploaded_file is not None:
     # -----------------------------
     # CLEAN DATE COLUMN
     # -----------------------------
-    df["Order Date"] = pd.to_datetime(df["Order Date"])
+    df = convert_dates(df)
 
     # -----------------------------
     # KPI SECTION
     # -----------------------------
     st.subheader("Key Performance Indicators")
 
-    total_sales = filtered_df["Sales"].sum()
-    total_profit = filtered_df["Profit"].sum()
-    total_orders = filtered_df["Order ID"].nunique()
-    avg_order_value = total_sales / total_orders
+    kpis = calculate_kpis(filtered_df)
+
+    total_sales = kpis["total_sales"]
+    total_profit = kpis["total_profit"]
+    total_orders = kpis["total_orders"]
+    avg_order_value = kpis["avg_order_value"]
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -199,52 +220,29 @@ if uploaded_file is not None:
 
     st.plotly_chart(fig4, use_container_width=True)
 
+
     # -----------------------------
-# BUSINESS INSIGHTS ENGINE
-# -----------------------------
-st.subheader("Business Insights")
+    # BUSINESS INSIGHTS ENGINE
+    # -----------------------------
+    st.subheader("Business Insights")
 
-# Top Category
-top_category = (
-    filtered_df.groupby("Category")["Sales"]
-    .sum()
-    .idxmax()
-)
+    top_category = get_top_category(filtered_df)
 
-# Top Region
-top_region = (
-    filtered_df.groupby("Region")["Profit"]
-    .sum()
-    .idxmax()
-)
+    top_region = get_top_region(filtered_df)
 
-# Top Product
-top_product = (
-    filtered_df.groupby("Product Name")["Sales"]
-    .sum()
-    .idxmax()
-)
+    top_product = get_top_product(filtered_df)
 
-# Category Contribution
-category_sales = (
-    filtered_df.groupby("Category")["Sales"]
-    .sum()
-)
+    category_percent = get_category_contribution(filtered_df)
 
-category_percent = (
-    category_sales.max()
-    / category_sales.sum()
-) * 100
+    st.success(
+        f"""
+        Top Sales Category: {top_category}
 
-st.success(
-    f"""
-    Top Sales Category: {top_category}
+        Highest Profit Region: {top_region}
 
-    Highest Profit Region: {top_region}
+        Best Selling Product: {top_product}
 
-    Best Selling Product: {top_product}
-
-    Leading Category Contribution:
-    {category_percent:.2f}% of total sales
-    """
-)
+        Leading Category Contribution:
+        {category_percent:.2f}% of total sales
+        """
+    )
